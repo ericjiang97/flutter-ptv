@@ -4,9 +4,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
+import 'dart:convert'; // for the utf8.encode method
 
 Future main() async {
-  await DotEnv().load('.env');
+  await DotEnv().load('./.env');
   runApp(MyApp());
 }
 
@@ -84,19 +85,23 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void updateLocation() async {
-    var devId = DotEnv().env['PTV_DEVELOPER_ID'];
-    var devKey = DotEnv().env['PTV_DEVELOPER_KEY'];
+
+    print('Developer ID: ${devId}');
+
     try {
       Position newPosition = await Geolocator().getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       setState(() {
         _position = newPosition;
       });
-      var query = "v3/stops/location/${newPosition.latitude.toString()},${newPosition.longitude.toString()}&devId=${devId}";
-      var hmacSha1Converter = Hmac(sha1,devKey.codeUnits);
+      var query = "v3/stops/location/${newPosition.latitude.toString()},${newPosition.longitude.toString()}?devId=${devId}";
+      var hmacSha1Converter = Hmac(sha1,utf8.encode(devKey));
 
-      var signature = hmacSha1Converter.convert(query.codeUnits);
-      final resp = await http.get('https://timetableapi.ptv.vic.gov.au/${query}&signature=${signature}');
-      print('PTV API Resp ${resp.statusCode}');
+      var signature = hmacSha1Converter.convert(utf8.encode(query));
+
+      var url = 'https://timetableapi.ptv.vic.gov.au/${query}&signature=${signature}';
+
+      final resp = await http.get(url);
+
 
 
     } catch (e) {
